@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/google/go-querystring/query"
 )
 
 // ResponseType : Interface for API responses.
@@ -18,6 +20,19 @@ type Response struct {
 
 func (r *Response) GetResult() string {
 	return r.Result
+}
+
+func EncodeParams(params any) string {
+	values, _ := query.Values(params)
+	return values.Encode()
+}
+
+type CommonResponse struct {
+	Result   string    `json:"result"`
+	Response string    `json:"response"`
+	Limit    int       `json:"limit"`
+	Offset   int       `json:"offset"`
+	Total    int       `json:"total"`
 }
 
 // Relationship : Struct containing relationships, with optional attributes for the relation.
@@ -54,7 +69,7 @@ func (a *Relationship) UnmarshalJSON(data []byte) error {
 	a.Type = typ.Type
 	if typ.Attributes != nil {
 		if err = json.Unmarshal(typ.Attributes, a.Attributes); err != nil {
-			return fmt.Errorf("error unmarshalling relationship of type %s: %s, %s", 
+			return fmt.Errorf("error unmarshalling relationship of type %s: %s, %s",
 				typ.Type, err.Error(), string(data))
 		}
 	}

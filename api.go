@@ -81,9 +81,7 @@ func (c *DexClient) Request(ctx context.Context, method, url string, body io.Rea
 		if err = json.NewDecoder(resp.Body).Decode(&er); err != nil {
 			return nil, err
 		}
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
-		}(resp.Body)
+		defer resp.Body.Close()
 		return nil, fmt.Errorf("non-200 status code -> (%d) %s", resp.StatusCode, er.GetErrors())
 	}
 	return resp, nil
@@ -96,12 +94,8 @@ func (c *DexClient) RequestAndDecode(ctx context.Context, method, url string, bo
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	// Decode the request into the specified ResponseType.
-	err = json.NewDecoder(resp.Body).Decode(rt)
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
-
-	return err
+	return json.NewDecoder(resp.Body).Decode(rt)
 }

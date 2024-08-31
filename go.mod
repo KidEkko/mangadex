@@ -1,3 +1,5 @@
-module github.com/darylhjd/mangodex
+module github.com/KidEkko/mangodex
 
-go 1.16
+go 1.22.4
+
+require github.com/google/go-querystring v1.1.0

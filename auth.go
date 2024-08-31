@@ -9,10 +9,16 @@ import (
 	"net/url"
 )
 
+/*
+	ALL LOGIN/LOGOUT FUNCTIONS ARE CURRENTLY DEPRECATED
+	ONLY USE PERMISSIONS 
+*/
+
 const (
 	LoginPath        = "auth/login"
 	LogoutPath       = "auth/logout"
 	RefreshTokenPath = "auth/refresh"
+	PermissionPath   = "auth/check"
 )
 
 // AuthService : Provides Auth services provided by the API.
@@ -20,13 +26,29 @@ type AuthService service
 
 // AuthResponse : Typical AuthService response.
 type AuthResponse struct {
-	Result  string  `json:"result"`
-	Token   token   `json:"token"`
-	Message *string `json:"message,omitempty"`
+	Result      string   `json:"result"`
+	Token       token    `json:"token"`
+	Message     *string  `json:"message,omitempty"`
+	IsAuth      bool     `json:"isAuthenticated"`
+	Roles       []string `json:"roles"`
+	Permissions []string `json:"permissions"`
 }
 
 func (ar AuthResponse) GetResult() string {
 	return ar.Result
+}
+
+func (s *AuthService) CheckPermissions(token string) error {
+	return s.CheckPermissionsWithContext(context.Background(), token)
+}
+
+func (s *AuthService) CheckPermissionsWithContext(ctx context.Context, token string) (err error) {
+	u, _ := url.Parse(BaseAPI)
+	u.Path = PermissionPath
+	s.client.header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	// maybe this isn't a thing yet? says deprecated on the site
+	return
 }
 
 // token : MangaDex token. Includes session and refresh token.

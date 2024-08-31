@@ -1,48 +1,65 @@
 package mangodex
 
+// For Param ordering
+const (
+	AscendingOrder  = "asc"
+	DescendingOrder = "desc"
+)
+
 // Publication demographic
 const (
-	ShonenDemographic string = "shounen"
-	ShoujoDemographic string = "shoujo"
-	JoseiDemographic  string = "josei"
-	SeinenDemograpic  string = "seinen"
+	ShonenDemographic = "shounen"
+	ShoujoDemographic = "shoujo"
+	JoseiDemographic  = "josei"
+	SeinenDemograpic  = "seinen"
 )
 
 // Manga publication status
 const (
-	OngoingStatus   string = "ongoing"
-	CompletedStatus string = "completed"
-	HiatusStatus    string = "hiatus"
-	CancelledStatus string = "cancelled"
+	OngoingStatus   = "ongoing"
+	CompletedStatus = "completed"
+	HiatusStatus    = "hiatus"
+	CancelledStatus = "cancelled"
+	NoStatus        = "none"
 )
 
 // Manga reading status
 const (
-	Reading    string = "reading"
-	OnHold     string = "on_hold"
-	PlanToRead string = "plan_to_read"
-	Dropped    string = "dropped"
-	ReReading  string = "re_reading"
-	Completed  string = "completed"
+	Reading    = "reading"
+	OnHold     = "on_hold"
+	PlanToRead = "plan_to_read"
+	Dropped    = "dropped"
+	ReReading  = "re_reading"
+	Completed  = "completed"
 )
 
 // Manga content rating
 const (
-	Safe       string = "safe"
-	Suggestive string = "suggestive"
-	Erotica    string = "erotica"
-	Porn       string = "pornographic"
+	Safe       = "safe"
+	Suggestive = "suggestive"
+	Erotica    = "erotica"
+	Porn       = "pornographic"
 )
 
 // Relationship types. Useful for reference expansions
 const (
-	MangaRel           string = "manga"
-	ChapterRel         string = "chapter"
-	CoverArtRel        string = "cover_art"
-	AuthorRel          string = "author"
-	ArtistRel          string = "artist"
-	ScanlationGroupRel string = "scanlation_group"
-	TagRel             string = "tag"
-	UserRel            string = "user"
-	CustomListRel      string = "custom_list"
+	MangaRel           = "manga"
+	ChapterRel         = "chapter"
+	CoverArtRel        = "cover_art"
+	AuthorRel          = "author"
+	ArtistRel          = "artist"
+	ScanlationGroupRel = "scanlation_group"
+	TagRel             = "tag"
+	UserRel            = "user"
+	CustomListRel      = "custom_list"
+)
+
+// Includes enums, use in your arrays
+const (
+	IncManga   = "manga"
+	IncCover   = "cover_art"
+	IncAuthor  = "author"
+	IncArtist  = "artist"
+	IncTag     = "tag"
+	IncCreator = "creator"
 )

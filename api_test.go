@@ -2,9 +2,7 @@ package mangodex
 
 import (
 	"fmt"
-	"net/url"
 	"os"
-	"strconv"
 	"testing"
 )
 
@@ -27,11 +25,11 @@ func TestGetLoggedUser(t *testing.T) {
 }
 
 func TestGetMangaList(t *testing.T) {
-	params := url.Values{}
-	params.Set("limit", strconv.Itoa(100))
-	params.Set("offset", strconv.Itoa(0))
-	// Include Author relationship
-	params.Set("includes[]", AuthorRel)
+	params := &ListMangaParams{
+		Limit:    100,
+		Offset:   0,
+		Includes: []string{AuthorRel},
+	}
 	// If it is a search, then we add the search term.
 	_, err := client.Manga.GetMangaList(params)
 	if err != nil {

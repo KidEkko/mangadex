@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,6 +16,8 @@ import (
 const (
 	GetMDHomeURLPath = "at-home/server/%s"
 	MDHomeReportURL  = "https://api.mangadex.network/report"
+	dataSaver = "data-saver"
+	force443 = "forcePort443"
 )
 
 // AtHomeService : Provides MangaDex@Home services provided by the API.
@@ -46,6 +47,8 @@ type MDHomeClient struct {
 	baseURL string
 	quality string
 	hash    string
+	report  *reportPayload
+	start    time.Time
 	Pages   []string
 }
 
@@ -62,7 +65,7 @@ func (s *AtHomeService) NewMDHomeClientContext(ctx context.Context, chapterID st
 
 	// Set query parameters
 	q := u.Query()
-	q.Set("forcePort443", strconv.FormatBool(forcePort443))
+	q.Set(force443, strconv.FormatBool(forcePort443))
 	u.RawQuery = q.Encode()
 
 	var r MDHomeServerResponse
@@ -73,7 +76,7 @@ func (s *AtHomeService) NewMDHomeClientContext(ctx context.Context, chapterID st
 
 	// Set the required pages data for required quality.
 	pages := r.Chapter.Data
-	if quality == "data-saver" {
+	if quality == dataSaver {
 		pages = r.Chapter.DataSaver
 	}
 
@@ -92,47 +95,36 @@ func (c *MDHomeClient) GetChapterPage(filename string) ([]byte, error) {
 }
 
 // GetChapterPageWithContext : GetChapterPage with custom context.
-func (c *MDHomeClient) GetChapterPageWithContext(ctx context.Context, filename string) ([]byte, error) {
-	path := strings.Join([]string{c.baseURL, c.quality, c.hash, filename}, "/")
+func (c *MDHomeClient) GetChapterPageWithContext(ctx context.Context, filename string) (fileData []byte, err error) {
+	// Send report in the background.
+	defer func() { go c.reportContext(ctx) }()
 
+	path := strings.Join([]string{c.baseURL, c.quality, c.hash, filename}, "/")
+	c.report = newPayload(path)
+
+	// time will be slightly inflated, but w/e
+	c.start = time.Now()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	// Start timing how long to get all bytes for the file.
-	start := time.Now()
 	resp, err := c.client.Do(req)
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
-
-	var fileData []byte
-	// If we cannot not get chapter successfully
-	if err != nil || resp.StatusCode != 200 {
-		if err == nil {
-			err = fmt.Errorf("%d status code", resp.StatusCode)
-		}
+	if err != nil {
+		return
 	}
+	defer resp.Body.Close()
 
 	// Read file data.
-	fileData, err = ioutil.ReadAll(resp.Body)
+	fileData, err = io.ReadAll(resp.Body)
+	c.report.Bytes = len(fileData)
+	c.report.Success = err == nil && resp.StatusCode == http.StatusOK 
+	c.report.Cached = strings.HasPrefix(resp.Header.Get("X-Cache"), "HIT")
+	return
+}
 
-	// Send report in the background.
-	go func() {
-		// Create the payload to send.
-		r := &reportPayload{
-			URL:      path,
-			Success:  err == nil,
-			Bytes:    len(fileData),
-			Duration: time.Since(start).Milliseconds(),
-			Cached:   strings.HasPrefix(resp.Header.Get("X-Cache"), "HIT"),
-		}
-
-		_, _ = c.reportContext(ctx, r) // Send report
-	}()
-
-	return fileData, err
+func (c *MDHomeClient) FileUrl(filename string) string {
+	return strings.Join([]string{c.baseURL, c.quality, c.hash, filename}, "/")
 }
 
 // reportPayload : Required fields for reporting page download result.
@@ -144,15 +136,23 @@ type reportPayload struct {
 	Cached   bool
 }
 
-// reportContext : Report success of getting chapter page data.
-func (c *MDHomeClient) reportContext(ctx context.Context, r *reportPayload) (*http.Response, error) {
-	rBytes, err := json.Marshal(r)
-	if err != nil {
-		return nil, err
+func newPayload(path string) *reportPayload {
+	return &reportPayload{
+		URL:     path,
 	}
+}
+
+// reportContext : Report success of getting chapter page data.
+func (c *MDHomeClient) reportContext(ctx context.Context) {
+	c.report.Duration = time.Since(c.start).Milliseconds()
+	rBytes, err := json.Marshal(c.report)
+	if err != nil {
+		return
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, MDHomeReportURL, bytes.NewBuffer(rBytes))
 	if err != nil {
-		return nil, err
+		return
 	}
-	return c.client.Do(req)
+	c.client.Do(req)
 }

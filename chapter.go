@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	MangaChapterPath     = "chapter/%s"
 	MangaChaptersPath    = "manga/%s/feed"
 	MangaReadMarkersPath = "manga/%s/read"
 )
@@ -19,12 +20,8 @@ type ChapterService service
 
 // ChapterList : A response for getting a list of chapters.
 type ChapterList struct {
-	Result   string    `json:"result"`
-	Response string    `json:"response"`
-	Data     []Chapter `json:"data"`
-	Limit    int       `json:"limit"`
-	Offset   int       `json:"offset"`
-	Total    int       `json:"total"`
+	CommonResponse
+	Data []Chapter `json:"data"`
 }
 
 func (cl *ChapterList) GetResult() string {
@@ -52,6 +49,39 @@ func (c *Chapter) GetChapterNum() string {
 	return "-"
 }
 
+// All parameters that are accepted when making a Chapter Feed Call
+// https://api.mangadex.org/docs/redoc.html#tag/Manga/operation/get-manga-id-feed
+type ListChapterParams struct {
+	Limit                int          `json:"limit" url:"limit,omitempty"`
+	Offset               int          `json:"offset" url:"offset,omitempty"`
+	Language             []string     `json:"translatedLanguage" url:"translatedLanguage[],omitempty"`
+	OGLanguage           []string     `json:"originalLanguage" url:"originalLanguage[],omitempty"`
+	EXOGLanguage         []string     `json:"excludedOriginalLanguage" url:"excludedOriginalLanguage[],omitempty"`
+	ContentRating        []string     `json:"contentRating" url:"contentRating[],omitempty"`
+	ExcludedGroups       []string     `json:"excludedGroups" url:"excludedGroups[],omitempty"`
+	ExcludedUploaders    []string     `json:"excludedUploaders" url:"excludedUploaders[],omitempty"`
+	IncludeFutureUpdates string       `json:"includeFutureUpdates" url:"includeFutureUpdates,omitempty"`
+	CreatedSince         string       `json:"createdAtSince" url:"createdAtSince,omitempty"`
+	UpdatedSince         string       `json:"updatedAtSince" url:"updatedAtSince,omitempty"`
+	PublishedSince       string       `json:"publishAtSince" url:"publishAtSince,omitempty"`
+	Order                ChapterOrder `json:"order" url:"order,omitempty"`
+	Includes             []string     `json:"includes" url:"includes[],omitempty"`
+	IncludeEmptyPages    int          `json:"includeEmptyPages" url:"includeEmptyPages,omitempty"`
+	IncludeFuturePublish int          `json:"includeFuturePublishAt" url:"includeFuturePublishAt,omitempty"`
+	IncludeExternalUrl   int          `json:"includeExternalUrl" url:"includeExternalUrl,omitempty"`
+}
+
+// Control the ordering of the output of an api call
+// All values must either be asc or desc
+type ChapterOrder struct {
+	Created  string `json:"createdAt" url:"createdAt,omitempty"`
+	Updated  string `json:"updatedAt" url:"updatedAt,omitempty"`
+	Publish  string `json:"publishAt" url:"publishAt,omitempty"`
+	Readable string `json:"readableAt" url:"readableAt,omitempty"`
+	Volume   string `json:"volume" url:"volume,omitempty"`
+	Chapter  string `json:"chapter" url:"chapter,omitempty"`
+}
+
 // ChapterAttributes : Attributes for a Chapter.
 type ChapterAttributes struct {
 	Title              string  `json:"title"`
@@ -68,19 +98,47 @@ type ChapterAttributes struct {
 
 // GetMangaChapters : Get a list of chapters for a manga.
 // https://api.mangadex.org/docs.html#operation/get-manga-id-feed
-func (s *ChapterService) GetMangaChapters(id string, params url.Values) (*ChapterList, error) {
+func (s *ChapterService) GetMangaChapters(id string, params *ListChapterParams) (*ChapterList, error) {
 	return s.GetMangaChaptersContext(context.Background(), id, params)
 }
 
 // GetMangaChaptersContext : GetMangaChapters with custom context.
-func (s *ChapterService) GetMangaChaptersContext(ctx context.Context, id string, params url.Values) (*ChapterList, error) {
+func (s *ChapterService) GetMangaChaptersContext(ctx context.Context, id string, params *ListChapterParams) (*ChapterList, error) {
 	u, _ := url.Parse(BaseAPI)
 	u.Path = fmt.Sprintf(MangaChaptersPath, id)
 
 	// Set request parameters
-	u.RawQuery = params.Encode()
+	u.RawQuery = EncodeParams(params)
 
 	var l ChapterList
+	err := s.client.RequestAndDecode(ctx, http.MethodGet, u.String(), nil, &l)
+	return &l, err
+}
+
+type GetChapterParams struct {
+	Includes []string `json:"includes" url:"includes,omitempty"`
+}
+
+type SingleChapter struct {
+	CommonResponse
+	Chapter Chapter `json:"data"`
+}
+
+func (c *SingleChapter) GetResult() string {
+	return c.Result
+}
+
+func (s *ChapterService) GetMangaChapter(id string, params *GetChapterParams) (*SingleChapter, error) {
+	return s.GetMangaChapterWithContext(context.Background(), id, params)
+}
+
+func (s *ChapterService) GetMangaChapterWithContext(ctx context.Context, id string, params *GetChapterParams) (*SingleChapter, error) {
+	u, _ := url.Parse(BaseAPI)
+	u.Path = fmt.Sprintf(MangaChapterPath, id)
+
+	u.RawQuery = EncodeParams(params)
+
+	var l SingleChapter
 	err := s.client.RequestAndDecode(ctx, http.MethodGet, u.String(), nil, &l)
 	return &l, err
 }
